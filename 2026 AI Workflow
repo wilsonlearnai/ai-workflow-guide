@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>2026 AI Workflow System — wilson.learn.ai</title>
+<style>
+  :root{
+    --cream:#F7F4EE; --cream-2:#F0EBE1; --paper:#FFFFFF;
+    --clay:#CC785C; --clay-deep:#B8593E; --clay-soft:#E3A083;
+    --ink:#262220; --ink-2:#4A433E; --muted:#8A8077; --line:#E6DFD3;
+    --green:#5C8A6A; --red:#B8593E; --gold:#C9A227; --blue:#5B7FA6;
+    --code-bg:#2A2622;
+    --sidebar-w:248px;
+    --shadow:0 1px 2px rgba(38,34,32,.04),0 8px 24px rgba(38,34,32,.06);
+    --shadow-lg:0 14px 44px rgba(38,34,32,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;height:100vh;overflow:hidden}
+  ::selection{background:var(--clay-soft);color:#fff}
+  .mono{font-family:"SF Mono",ui-monospace,"Cascadia Code","Consolas",monospace}
+
+  .app{display:flex;height:100vh;overflow:hidden}
+
+  /* ===== SIDEBAR ===== */
+  .sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--paper);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;height:100vh;transition:margin-left .22s ease;overflow-y:auto}
+  .sidebar.collapsed{margin-left:calc(-1 * var(--sidebar-w))}
+  .sb-head{padding:18px 16px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .sb-head .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--clay),var(--clay-deep));
+    display:grid;place-items:center;flex-shrink:0}
+  .sb-head .mark svg{width:16px;height:16px}
+  .sb-head .tname{font-weight:650;font-size:13.5px;letter-spacing:-.1px;line-height:1.25}
+  .sb-head .tname small{display:block;font-weight:500;font-size:10.5px;color:var(--muted)}
+
+  .sb-progress{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .sb-progress .ptop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .sb-progress .plabel{font-size:11px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .sb-progress .pval{font-size:11px;font-weight:700;color:var(--clay-deep)}
+  .sb-progress .ptrack{height:6px;background:var(--cream-2);border-radius:4px;overflow:hidden}
+  .sb-progress .pfill{height:100%;background:linear-gradient(90deg,var(--clay-soft),var(--clay));border-radius:4px;transition:width .3s ease}
+
+  .sb-nav{flex:1;padding:10px 10px 16px;overflow-y:auto}
+  .sb-nav .navgroup-label{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    padding:14px 10px 6px}
+  .sb-nav .navgroup-label:first-child{padding-top:4px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;
+    font-size:13px;font-weight:560;color:var(--ink-2);transition:background .15s;margin-bottom:1px}
+  .nav-item:hover{background:var(--cream-2)}
+  .nav-item.active{background:var(--clay);color:#fff}
+  .nav-item .chk{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0}
+  .nav-item.active .chk{border-color:rgba(255,255,255,.5)}
+  .nav-item.read .chk{background:var(--green);border-color:var(--green)}
+  .nav-item.active.read .chk{background:#fff;border-color:#fff}
+  .nav-item span.lbl{flex:1}
+
+  .sb-foot{padding:13px 16px;border-top:1px solid var(--line)}
+  .sb-foot .follow-card{background:var(--cream-2);border-radius:10px;padding:11px 12px;text-align:center}
+  .sb-foot .follow-card .fhandle{font-size:12.5px;font-weight:660;display:block;margin-bottom:2px}
+  .sb-foot .follow-card .fsub{font-size:10.5px;color:var(--muted);display:block;margin-bottom:8px}
+
+  /* ===== MAIN ===== */
+  .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0}
+  .topbar{flex-shrink:0;background:rgba(247,244,238,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);padding:13px 24px;display:flex;align-items:center;gap:12px}
+  .topbar .menu-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--paper);
+    display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex-shrink:0}
+  .topbar .crumb{font-size:13px;font-weight:620;color:var(--ink)}
+  .topbar .follow{margin-left:auto;background:var(--clay);color:#fff;font-size:12px;font-weight:650;
+    padding:7px 13px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+
+  .content{flex:1;overflow-y:auto;padding:28px 32px 70px}
+  .content-inner{max-width:760px;margin:0 auto}
+
+  .panel-view{display:none}
+  .panel-view.active{display:block}
+
+  /* ===== Hero (overview panel) ===== */
+  .hero{background:linear-gradient(120deg,#2B2620 0%,#3C342B 55%,#5A4233 100%);border-radius:18px;
+    padding:32px 28px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+  .hero::after{content:"";position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;
+    background:radial-gradient(circle,rgba(204,120,92,.5),transparent 70%)}
+  .hero .eyebrow{font-size:11.5px;font-weight:650;letter-spacing:1.1px;text-transform:uppercase;color:var(--clay-soft);margin-bottom:10px;position:relative;z-index:2}
+  .hero h1{font-size:25px;letter-spacing:-.6px;font-weight:680;line-height:1.18;position:relative;z-index:2}
+  .hero p{font-size:14px;opacity:.8;margin-top:12px;max-width:540px;position:relative;z-index:2}
+  .hero .cta-box{margin-top:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+    border-radius:12px;padding:14px 16px;position:relative;z-index:2;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hero .cta-box .ctxt{font-size:13px;font-weight:550;flex:1;min-width:200px}
+  .hero .cta-box .ctxt b{color:var(--clay-soft)}
+  .hero .cta-box .pill{flex-shrink:0;background:var(--clay);color:#fff;font-size:13px;font-weight:650;padding:10px 18px;border-radius:9px}
+
+  .quicknav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+  .qn-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;
+    transition:border-color .15s;display:flex;align-items:center;gap:11px}
+  .qn-card:hover{border-color:var(--clay-soft)}
+  .qn-card .qn-ic{width:34px;height:34px;border-radius:9px;background:var(--cream-2);display:grid;place-items:center;
+    font-size:15px;flex-shrink:0;color:var(--clay-deep)}
+  .qn-card .qn-t{font-size:13px;font-weight:650}
+  .qn-card .qn-s{font-size:11px;color:var(--muted);margin-top:1px}
+
+  /* ===== Sections ===== */
+  .sec-head{display:flex;align-items:flex-start;gap:13px;margin-bottom:18px}
+  .sec-head .sh-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;
+    background:var(--cream-2);border:1px solid var(--line);color:var(--clay-deep);font-size:17px}
+  .sec-head h2{font-size:19px;font-weight:660;letter-spacing:-.3px}
+  .sec-head .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+  .prose{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+  .prose p{margin-bottom:12px}
+  .prose p:last-child{margin-bottom:0}
+  .prose b{color:var(--ink);font-weight:620}
+
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  .panel + .panel{margin-top:14px}
+
+  h3.subhead{font-size:14.5px;font-weight:660;color:var(--ink);margin:18px 0 8px}
+  .panel h3.subhead:first-child{margin-top:0}
+
+  .stat-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0}
+  .stat-box{background:var(--cream-2);border:1px solid var(--line);border-radius:12px;padding:14px 12px;text-align:center}
+  .stat-box .sval{font-size:21px;font-weight:700;color:var(--clay-deep);letter-spacing:-.4px}
+  .stat-box .slabel{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
+  .source-tag{font-size:11px;color:var(--muted);margin-top:10px;font-style:italic}
+
+  .myth-row{display:flex;gap:14px;padding:15px 0;border-bottom:1px solid var(--line)}
+  .myth-row:last-child{border-bottom:none}
+  .myth-row .mx,.myth-row .ck{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;font-size:13px;font-weight:700;color:#fff;margin-top:1px}
+  .myth-row .mx{background:var(--clay-deep)}
+  .myth-row .ck{background:var(--green)}
+  .myth-row .mtxt b{font-size:13.5px;display:block;margin-bottom:3px}
+  .myth-row .mtxt span{font-size:13px;color:var(--muted);line-height:1.55}
+
+  /* ===== tool directory — accordion categories ===== */
+  .tool-cat{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--paper)}
+  .tool-cat:last-child{margin-bottom:0}
+  .tool-cat-head{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none}
+  .tool-cat-head:hover{background:var(--cream-2)}
+  .tool-cat-head h3{font-size:13.5px;font-weight:680;color:var(--ink);flex:1}
+  .tool-cat-head .tc-tag{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--cream-2);padding:3px 9px;border-radius:20px}
+  .tool-cat-head .chev{width:18px;height:18px;flex-shrink:0;display:grid;place-items:center;color:var(--muted);
+    transition:transform .2s}
+  .tool-cat.open .chev{transform:rotate(180deg)}
+  .tool-cat-body{max-height:0;overflow:hidden;transition:max-height .25s ease}
+  .tool-cat.open .tool-cat-body{max-height:3000px}
+  .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px 16px}
+  .tool-card{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;
+    background:var(--cream);text-decoration:none;color:var(--ink);transition:border-color .15s}
+  .tool-card:hover{border-color:var(--clay-soft)}
+  .tool-card .badge{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;flex-shrink:0;
+    color:#fff;font-weight:700;font-size:11px;letter-spacing:-.2px}
+  .tool-card .tinfo{min-width:0;flex:1}
+  .tool-card .tname-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tool-card .tname{font-size:12.5px;font-weight:660;display:block;line-height:1.3}
+  .tool-card .tdesc{font-size:11px;color:var(--muted);line-height:1.4;display:block;margin-top:1px}
+  .tool-card .ptag{font-size:9px;font-weight:700;text-transform:uppercase;padding:1.5px 5px;border-radius:4px;flex-shrink:0}
+  .tool-card .ptag.free{background:rgba(92,138,106,.15);color:var(--green)}
+  .tool-card .ptag.paid{background:rgba(184,89,62,.13);color:var(--clay-deep)}
+
+  .fw-intro{background:var(--cream-2);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--ink-2);margin-bottom:18px;line-height:1.55}
+  .step{padding:18px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .shead{display:flex;gap:14px;align-items:flex-start}
+  .step .snum{width:34px;height:34px;border-radius:10px;background:var(--cream-2);border:1px solid var(--line);
+    display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--clay-deep);flex-shrink:0}
+  .step .stxt b{font-size:14px;display:block;margin-bottom:4px}
+  .step .stxt span{font-size:13px;color:var(--muted);line-height:1.55;display:block}
+  .step .examples{margin-top:10px;margin-left:48px;display:flex;flex-direction:column;gap:6px}
+  .step .examples .ex{background:var(--cream-2);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--ink-2);font-style:italic}
+  .step .examples .ex b{font-style:normal;color:var(--clay-deep);font-weight:650;margin-right:4px}
+  .step .codey{margin-top:10px;margin-left:48px}
+  .step .codey pre{background:var(--code-bg);color:#E5DDD2;border-radius:8px;padding:11px 13px;font-size:11.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .step .codey .tk{color:var(--clay-soft)}
+
+  .mistake-row{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .mistake-row:last-child{border-bottom:none}
+  .mistake-row .mic{width:30px;height:30px;border-radius:8px;background:rgba(184,89,62,.1);color:var(--clay-deep);
+    display:grid;place-items:center;flex-shrink:0;font-weight:700;font-size:13px}
+  .mistake-row .mtxt b{font-size:13.5px;display:block;margin-bottom:3px}
+  .mistake-row .mtxt .bad{font-size:12.5px;color:var(--clay-deep);display:block;margin:4px 0}
+  .mistake-row .mtxt .good{font-size:12.5px;color:var(--green);display:block}
+  .mistake-row .mtxt span.note{font-size:13px;color:var(--muted);line-height:1.55;display:block;margin-top:4px}
+
+  .ex-block{margin-bottom:28px}
+  .ex-block:last-child{margin-bottom:0}
+  .ex-block .ex-title{font-size:13.5px;font-weight:660;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .ex-block .ex-title .et-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    background:var(--cream-2);color:var(--clay-deep);padding:2px 8px;border-radius:6px}
+  .ex-block .ex-context{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.55}
+  .code-pane{background:var(--code-bg);border-radius:12px;padding:16px 18px}
+  .code-pane .ctop{display:flex;align-items:center;gap:7px;margin-bottom:11px}
+  .code-pane .ctop i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .code-pane .ctop .fn{margin-left:8px;font-size:11px;color:#9b948c}
+  .code-pane pre{font-size:12.5px;line-height:1.75;color:#E5DDD2;white-space:pre-wrap;word-break:break-word}
+  .code-pane .tk{color:var(--clay-soft)}
+  .code-pane .var{color:#9DBE8D}
+
+  .cmp-table{width:100%;border-collapse:collapse;margin-top:6px}
+  .cmp-table th{font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);text-align:left;
+    padding:8px 10px;border-bottom:2px solid var(--line)}
+  .cmp-table td{font-size:12.5px;color:var(--ink-2);padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .cmp-table td:first-child,.cmp-table th:first-child{font-weight:660;color:var(--ink)}
+  .cmp-table tr:last-child td{border-bottom:none}
+
+  .platform-card{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .platform-card:last-child{border-bottom:none}
+  .platform-card .pbadge{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+  .platform-card .ptxt b{font-size:13.5px;display:block;margin-bottom:3px}
+  .platform-card .ptxt span{font-size:12.5px;color:var(--muted);line-height:1.55;display:block}
+
+  .action-card{background:linear-gradient(135deg,#F4EEE4,#EBE3D4);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px}
+  .action-card h3{font-size:15px;font-weight:660;margin-bottom:8px}
+  .action-card ol{padding-left:20px;font-size:13.5px;color:var(--ink-2);line-height:1.7}
+  .action-card ol li{margin-bottom:4px}
+
+  .closing{margin-top:8px;background:linear-gradient(120deg,#2B2620 0%,#3C342B 55%,#5A4233 100%);
+    border-radius:18px;padding:30px 28px;color:#fff;text-align:center;position:relative;overflow:hidden}
+  .closing::after{content:"";position:absolute;left:-50px;bottom:-50px;width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle,rgba(204,120,92,.45),transparent 70%)}
+  .closing h2{font-size:21px;font-weight:660;letter-spacing:-.3px;position:relative;z-index:2}
+  .closing p{font-size:13.5px;opacity:.8;margin-top:8px;max-width:420px;margin-left:auto;margin-right:auto;position:relative;z-index:2}
+  .closing .cbtns{margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;position:relative;z-index:2}
+  .closing .pill{background:var(--clay);color:#fff;font-size:13px;font-weight:650;padding:10px 18px;border-radius:9px}
+  .closing .pill.sec{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
+
+  .nav-footer-btns{display:flex;justify-content:space-between;margin-top:30px;gap:10px}
+  .nf-btn{font-size:12.5px;font-weight:620;color:var(--ink-2);background:var(--paper);border:1px solid var(--line);
+    padding:10px 16px;border-radius:9px;cursor:pointer}
+  .nf-btn:hover{border-color:var(--clay-soft)}
+
+  .scrim{display:none;position:fixed;inset:0;background:rgba(38,34,32,.4);z-index:30}
+
+  /* ===== floating WhatsApp CTA ===== */
+  .float-cta{position:fixed;bottom:22px;right:22px;z-index:50;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .float-panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);
+    padding:16px 18px;width:240px;max-height:0;opacity:0;overflow:hidden;transition:max-height .28s ease,opacity .22s ease,padding .28s ease;
+    transform-origin:bottom right}
+  .float-panel.open{max-height:220px;opacity:1}
+  .float-panel .fp-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .float-panel .fp-ic{width:30px;height:30px;border-radius:50%;background:#25D366;display:grid;place-items:center;flex-shrink:0}
+  .float-panel .fp-ic svg{width:16px;height:16px}
+  .float-panel .fp-title{font-size:13px;font-weight:660}
+  .float-panel .fp-sub{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+  .float-panel .fp-btn{display:block;text-align:center;background:var(--clay);color:#fff;font-size:12.5px;font-weight:650;
+    padding:10px;border-radius:9px;text-decoration:none}
+  .float-toggle{width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;cursor:pointer;
+    box-shadow:var(--shadow-lg);border:none;transition:transform .18s ease}
+  .float-toggle:hover{transform:scale(1.06)}
+  .float-toggle svg{width:28px;height:28px}
+  .float-toggle .pulse{position:absolute;width:56px;height:56px;border-radius:50%;background:#25D366;opacity:.5;
+    animation:floatPulse 2.2s ease-out infinite}
+  @keyframes floatPulse{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.7);opacity:0}}
+
+  /* ===== mascot ===== */
+  .mascot-wrap{position:absolute;top:10px;right:18px;width:74px;height:84px;z-index:3;pointer-events:none}
+  .mascot-wrap svg{width:100%;height:100%}
+  @keyframes mascotBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes mascotBlink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+  @keyframes mascotWave{0%,100%{transform:rotate(0deg)}50%{transform:rotate(18deg)}}
+  .masc-body{animation:mascotBob 2.6s ease-in-out infinite}
+  .masc-eye{animation:mascotBlink 4s ease-in-out infinite;transform-origin:center}
+  .masc-arm{animation:mascotWave 1.8s ease-in-out infinite;transform-origin:85px 78px}
+
+  @media(max-width:880px){
+    .sidebar{position:fixed;top:0;left:0;z-index:40;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+    .app.nav-open .scrim{display:block}
+    .content{padding:20px 16px 56px}
+    .topbar{padding:11px 16px}
+    .quicknav{grid-template-columns:1fr}
+    .tool-grid{grid-template-columns:1fr}
+    .stat-trio{grid-template-columns:1fr}
+    .hero{padding:22px 18px}
+    .hero h1{font-size:20px}
+    .panel{padding:16px}
+    .step .examples,.step .codey{margin-left:0;margin-top:12px}
+    .cmp-table{font-size:11px}
+    .cmp-table th,.cmp-table td{padding:7px 6px}
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="scrim" id="scrim"></div>
+
+  <aside class="sidebar collapsed" id="sidebar">
+    <div class="sb-head">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17L9.5 6l4.5 11M7 13h5M14 6l5 11" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="tname">2026 AI Workflow System<small>by wilson.learn.ai</small></div>
+    </div>
+
+    <div class="sb-progress">
+      <div class="ptop"><span class="plabel">Progress</span><span class="pval" id="progVal">0 / 8</span></div>
+      <div class="ptrack"><div class="pfill" id="progFill" style="width:0%"></div></div>
+    </div>
+
+    <nav class="sb-nav" id="sbNav">
+      <div class="navgroup-label">Start here</div>
+      <div class="nav-item active" data-panel="overview"><span class="chk"></span><span class="lbl">Overview</span></div>
+
+      <div class="navgroup-label">Foundations</div>
+      <div class="nav-item" data-panel="why"><span class="chk"></span><span class="lbl">Why AI matters now</span></div>
+      <div class="nav-item" data-panel="myths"><span class="chk"></span><span class="lbl">Common myths</span></div>
+
+      <div class="navgroup-label">Tools</div>
+      <div class="nav-item" data-panel="tools"><span class="chk"></span><span class="lbl">110+ tool directory</span></div>
+
+      <div class="navgroup-label">Skills</div>
+      <div class="nav-item" data-panel="chatbots"><span class="chk"></span><span class="lbl">2026 chatbot workflow</span></div>
+      <div class="nav-item" data-panel="framework"><span class="chk"></span><span class="lbl">RISEN prompt framework</span></div>
+      <div class="nav-item" data-panel="mistakes"><span class="chk"></span><span class="lbl">What goes wrong</span></div>
+      <div class="nav-item" data-panel="examples"><span class="chk"></span><span class="lbl">Worked examples</span></div>
+
+      <div class="navgroup-label">Next</div>
+      <div class="nav-item" data-panel="action"><span class="chk"></span><span class="lbl">Your first step</span></div>
+    </nav>
+
+    <div class="sb-foot">
+      <a class="follow-card" href="https://claudechallenge.com/claudemy-?am_id=wilson2456" target="_blank" rel="noopener" style="text-decoration:none;display:block">
+        <span class="fhandle">Learn Daily AI Tips</span>
+        <span class="fsub">Free daily challenge &#8594;</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="menu-btn" id="menuBtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div class="crumb" id="crumb">Overview</div>
+      <a class="follow" href="https://claudechallenge.com/claudemy-?am_id=wilson2456" target="_blank" rel="noopener" style="text-decoration:none">Learn Daily AI Tips</a>
+    </div>
+
+    <div class="content">
+      <div class="content-inner">
+
+        <section class="panel-view active" data-view="overview">
+          <div class="hero">
+            <div class="mascot-wrap">
+              <svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+                <g class="masc-body">
+                  <ellipse cx="50" cy="100" rx="26" ry="7" fill="rgba(0,0,0,.15)"/>
+                  <rect x="30" y="58" width="40" height="34" rx="14" fill="#E8DDD0"/>
+                  <rect x="36" y="64" width="28" height="6" rx="3" fill="#CC785C"/>
+                  <circle cx="50" cy="38" r="26" fill="#F2D9B8"/>
+                  <path d="M24 32 Q26 12 50 10 Q74 12 76 32 Q76 22 50 20 Q24 22 24 32 Z" fill="#3C342B"/>
+                  <ellipse class="masc-eye" cx="40" cy="40" rx="3.2" ry="4" fill="#2A2622"/>
+                  <ellipse class="masc-eye" cx="60" cy="40" rx="3.2" ry="4" fill="#2A2622"/>
+                  <path d="M42 50 Q50 56 58 50" stroke="#A6694B" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                  <circle cx="32" cy="46" r="4" fill="#E3A083" opacity=".55"/>
+                  <circle cx="68" cy="46" r="4" fill="#E3A083" opacity=".55"/>
+                  <rect x="44" y="14" width="12" height="6" rx="2" fill="#CC785C"/>
+                  <g class="masc-arm">
+                    <path d="M70 78 Q86 72 88 60" stroke="#E8DDD0" stroke-width="9" fill="none" stroke-linecap="round"/>
+                    <circle cx="88" cy="58" r="6" fill="#F2D9B8"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="eyebrow">A real, no-fluff starting point</div>
+            <h1>110+ tools, real frameworks, and the daily habit that actually builds AI skill.</h1>
+            <p>No fake vault, no locked templates. Click through the sections on the left — each one stands alone.</p>
+            <div class="cta-box">
+              <div class="ctxt">Want a <b>daily AI tip</b> sent straight to you?</div>
+              <a class="pill" href="https://claudechallenge.com/claudemy-?am_id=wilson2456" target="_blank" rel="noopener" style="text-decoration:none">Learn Daily AI Tips</a>
+            </div>
+          </div>
+
+          <div class="quicknav">
+            <div class="qn-card" data-goto="why"><div class="qn-ic">&#128202;</div><div><div class="qn-t">Why AI matters now</div><div class="qn-s">The real numbers behind the shift</div></div></div>
+            <div class="qn-card" data-goto="myths"><div class="qn-ic">&#9888;</div><div><div class="qn-t">Common myths</div><div class="qn-s">What people get wrong</div></div></div>
+            <div class="qn-card" data-goto="tools"><div class="qn-ic">&#129520;</div><div><div class="qn-t">110+ tools</div><div class="qn-s">Organized by what job they do</div></div></div>
+            <div class="qn-card" data-goto="chatbots"><div class="qn-ic">&#128172;</div><div><div class="qn-t">2026 chatbot workflow</div><div class="qn-s">How Claude, ChatGPT, Gemini work</div></div></div>
+            <div class="qn-card" data-goto="framework"><div class="qn-ic">&#129513;</div><div><div class="qn-t">RISEN framework</div><div class="qn-s">A sharper way to prompt</div></div></div>
+            <div class="qn-card" data-goto="action"><div class="qn-ic">&#128640;</div><div><div class="qn-t">Your first step</div><div class="qn-s">Do this today, not later</div></div></div>
+          </div>
+        </section>
+
+        <section class="panel-view" data-view="why">
+          <div class="sec-head"><div class="sh-ic">&#128202;</div><div><h2>Why AI matters right now</h2><div class="sub">The short version, backed by real numbers</div></div></div>
+          <div class="panel prose">
+            <p>AI today mostly means <b>large language models</b> — tools like Claude, ChatGPT, and Gemini that generate new text, code, or analysis on the spot, shaped entirely by how you ask. Unlike a search engine pulling up an existing page, these tools build the answer in real time — which is exactly why the way you phrase a request changes the quality of what comes back.</p>
+            <p>This isn't a future trend you can wait out — it's a labor market shift happening on a measurable timeline, right now:</p>
+
+            <svg viewBox="0 0 680 200" style="width:100%" role="img" aria-label="Bar chart comparing 92 million jobs displaced versus 170 million new jobs created globally by 2030">
+              <text x="40" y="30" font-size="12" fill="#8A8077">Global jobs by 2030 (World Economic Forum)</text>
+              <rect x="40" y="50" width="280" height="34" rx="6" fill="#E3A083"/>
+              <text x="50" y="73" font-size="13" font-weight="700" fill="#4A1B0C">92M displaced</text>
+              <rect x="40" y="96" width="520" height="34" rx="6" fill="#5C8A6A"/>
+              <text x="50" y="119" font-size="13" font-weight="700" fill="#fff">170M new roles created</text>
+              <rect x="40" y="142" width="640" height="34" rx="6" fill="#CC785C" opacity="0.85"/>
+              <text x="50" y="165" font-size="13" font-weight="700" fill="#fff">22% of all jobs see structural churn</text>
+            </svg>
+
+            <div class="stat-trio">
+              <div class="stat-box"><div class="sval">92M</div><div class="slabel">jobs displaced globally by 2030</div></div>
+              <div class="stat-box"><div class="sval">170M</div><div class="slabel">new roles created by 2030</div></div>
+              <div class="stat-box"><div class="sval">22%</div><div class="slabel">of all jobs will see structural churn</div></div>
+            </div>
+            <div class="source-tag">Source: World Economic Forum, Future of Jobs Report 2025 (survey of 1,000+ companies, 14M workers, 55 economies)</div>
+
+            <p style="margin-top:16px">The net number is positive — more roles created than destroyed — but that average hides the real story: the jobs being created mostly require AI fluency, and the jobs being lost mostly don't. <b>The same skill gap decides which side of that 92M/170M split you land on.</b> That's the entire case for learning this now instead of later — not fear, just timing.</p>
+          </div>
+          <div class="nav-footer-btns"><span></span><button class="nf-btn" data-goto="myths">Next: Common myths &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="myths">
+          <div class="sec-head"><div class="sh-ic">&#9888;</div><div><h2>Common myths — what people get wrong</h2><div class="sub">Clearing these up saves you weeks of wasted effort</div></div></div>
+          <div class="panel">
+            <div class="myth-row">
+              <div class="mx">&#10007;</div>
+              <div class="mtxt"><b>"The exact wording of a prompt doesn't matter much."</b>
+              <span>The opposite is true. Structure, examples, and clear instructions consistently produce sharper output than a bare one-line question — this is the entire reason the framework section exists.</span></div>
+            </div>
+            <div class="myth-row">
+              <div class="mx">&#10007;</div>
+              <div class="mtxt"><b>"All AI tools basically do the same thing."</b>
+              <span>Different tools are genuinely better at different jobs — long documents, fast chat, visuals, voice, code. Picking the right tool for the task matters more than picking a favorite and using it for everything.</span></div>
+            </div>
+            <div class="myth-row">
+              <div class="mx">&#10007;</div>
+              <div class="mtxt"><b>"If the answer sounds confident, it's probably accurate."</b>
+              <span>Confidence and accuracy are unrelated in these systems. Always verify anything work-critical — numbers, names, dates, sources — independently.</span></div>
+            </div>
+            <div class="myth-row">
+              <div class="ck">&#10003;</div>
+              <div class="mtxt"><b>What's actually true: it's a learnable skill, not a hidden trick.</b>
+              <span>The people getting the most value aren't using secret tools — they're better at describing what they want and correcting the output instead of accepting the first draft.</span></div>
+            </div>
+          </div>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="why">&#8592; Back</button><button class="nf-btn" data-goto="tools">Next: Tool directory &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="tools">
+          <div class="sec-head"><div class="sh-ic">&#129520;</div><div><h2>The tool directory</h2><div class="sub">110+ tools across 16 categories — click any category to expand</div></div></div>
+          <div id="toolCats"></div>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="myths">&#8592; Back</button><button class="nf-btn" data-goto="chatbots">Next: Chatbot workflow &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="chatbots">
+          <div class="sec-head"><div class="sh-ic">&#128172;</div><div><h2>The 2026 AI chatbot workflow</h2><div class="sub">How Claude, ChatGPT, and Gemini actually work under the hood</div></div></div>
+
+          <div class="panel prose">
+            <h3 class="subhead">The basic mechanic</h3>
+            <p>Every chatbot conversation follows the same loop: you send a message, the model reads your entire conversation so far (not just your latest line), and generates a response token by token based on everything in that window. There's no separate "thinking" happening between messages — each reply is built fresh from the full conversation it can see.</p>
+            <svg viewBox="0 0 680 110" style="width:100%;margin-top:10px" role="img" aria-label="Diagram showing your message plus conversation history flowing into the model, which generates a response">
+              <rect x="20" y="34" width="140" height="44" rx="10" fill="#F0EBE1" stroke="#E6DFD3" stroke-width="1"/>
+              <text x="90" y="52" text-anchor="middle" font-size="12" font-weight="600" fill="#262220">Your message</text>
+              <text x="90" y="68" text-anchor="middle" font-size="10.5" fill="#8A8077">+ full history</text>
+              <line x1="160" y1="56" x2="248" y2="56" stroke="#8A8077" stroke-width="1.5"/>
+              <polygon points="248,56 240,51 240,61" fill="#8A8077"/>
+              <rect x="256" y="24" width="160" height="64" rx="10" fill="#CC785C"/>
+              <text x="336" y="50" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">The model</text>
+              <text x="336" y="68" text-anchor="middle" font-size="10.5" fill="#F4E0D6">reads everything,</text>
+              <text x="336" y="80" text-anchor="middle" font-size="10.5" fill="#F4E0D6">predicts the reply</text>
+              <line x1="416" y1="56" x2="504" y2="56" stroke="#8A8077" stroke-width="1.5"/>
+              <polygon points="504,56 496,51 496,61" fill="#8A8077"/>
+              <rect x="512" y="34" width="140" height="44" rx="10" fill="#F0EBE1" stroke="#E6DFD3" stroke-width="1"/>
+              <text x="582" y="52" text-anchor="middle" font-size="12" font-weight="600" fill="#262220">Response</text>
+              <text x="582" y="68" text-anchor="middle" font-size="10.5" fill="#8A8077">built token by token</text>
+            </svg>
+          </div>
+
+          <div class="panel" style="margin-top:14px">
+            <h3 class="subhead" style="margin-top:0">Memory &amp; context, compared</h3>
+            <p class="prose" style="margin-bottom:10px">Two different things get called "memory" — don't mix them up. <b>Context window</b> is how much of your current conversation the model can actively hold at once. <b>Memory feature</b> is whether it remembers things across separate conversations, days apart.</p>
+            <table class="cmp-table">
+              <tr><th>Platform</th><th>Context window</th><th>Cross-chat memory</th></tr>
+              <tr><td>Claude</td><td>Up to 200K tokens — roughly a 500-page document held at once, with strong accuracy retrieving details from anywhere in it.</td><td>Structured, persistent memory of past conversations. No export to other platforms.</td></tr>
+              <tr><td>ChatGPT</td><td>Smaller default window on standard tiers, larger on paid tiers.</td><td>The most mature memory feature — automatic and user-editable, longest in market.</td></tr>
+              <tr><td>Gemini</td><td>The largest of the three — over 1 million tokens, built for huge documents or entire codebases at once.</td><td>Newest "Memory" feature, automatic extraction, still rolling out gradually.</td></tr>
+            </table>
+          </div>
+
+          <div class="panel" style="margin-top:14px">
+            <h3 class="subhead" style="margin-top:0">Plugins &amp; connectors, compared</h3>
+            <p class="prose" style="margin-bottom:6px">This is the part almost nobody uses, and it's where these tools stop being "just chat" — connecting the AI to your actual apps and data.</p>
+            <div class="platform-card">
+              <div class="pbadge" style="background:#CC785C">C</div>
+              <div class="ptxt"><b>Claude — Connectors (built on MCP)</b>
+              <span>Uses an open standard called MCP, so the same connector that links Claude to a tool can often work with other MCP-compatible apps too. Turn on in Settings &#8594; Connectors, then mention the connected tool by name in your message.</span></div>
+            </div>
+            <div class="platform-card">
+              <div class="pbadge" style="background:#10A37F">G</div>
+              <div class="ptxt"><b>ChatGPT — Custom GPTs + Connectors</b>
+              <span>Custom GPTs are pre-built mini-assistants with set instructions; Connectors link to external tools. Both are platform-specific — built for ChatGPT only, not portable elsewhere. Found under Explore GPTs or Settings &#8594; Connectors.</span></div>
+            </div>
+            <div class="platform-card">
+              <div class="pbadge" style="background:#4285F4">G</div>
+              <div class="ptxt"><b>Gemini — Gems + Extensions</b>
+              <span>Gems are custom assistants similar to GPTs. Extensions connect Gemini to other Google apps — Gmail, Docs, Maps — and are strongest if your work already lives inside Google's ecosystem.</span></div>
+            </div>
+          </div>
+
+          <div class="panel prose" style="margin-top:14px">
+            <h3 class="subhead" style="margin-top:0">The practical takeaway</h3>
+            <p>If you need an AI that genuinely remembers details about you across weeks, ChatGPT's memory is currently the most mature. If you're processing huge documents in one sitting, Gemini's context window wins. If you want one connector setup that might work across multiple AI tools instead of being locked into one platform, Claude's MCP-based approach is built for that. None of this is "better" universally — it's about which constraint matters for your actual task.</p>
+          </div>
+
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="tools">&#8592; Back</button><button class="nf-btn" data-goto="framework">Next: RISEN framework &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="framework">
+          <div class="sec-head"><div class="sh-ic">&#129513;</div><div><h2>The RISEN prompt framework</h2><div class="sub">A sharper structure than "role, context, task, format" — most people have never seen this</div></div></div>
+          <div class="panel">
+            <div class="fw-intro">RISEN was developed as an evolution of an earlier framework called RISE, specifically to add explicit boundaries most prompts are missing. It stands for <b>Role, Instructions, Steps, End Goal, Narrowing</b> — five components that work like a project brief rather than a single instruction.</div>
+
+            <svg viewBox="0 0 680 230" style="width:100%;margin-bottom:8px" role="img" aria-label="RISEN pyramid showing five layers: Narrowing at top, then End Goal, Steps, Instructions, Role at base">
+              <polygon points="340,20 410,72 270,72" fill="#B8593E" opacity="0.92"/>
+              <polygon points="270,72 410,72 440,116 240,116" fill="#CC785C" opacity="0.92"/>
+              <polygon points="240,116 440,116 470,160 210,160" fill="#D8896C" opacity="0.92"/>
+              <polygon points="210,160 470,160 500,204 180,204" fill="#E3A083" opacity="0.92"/>
+              <polygon points="180,204 500,204 530,228 150,228" fill="#EBC4AC" opacity="0.92"/>
+              <text x="340" y="50" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">N</text>
+              <text x="340" y="98" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">E</text>
+              <text x="340" y="142" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">S</text>
+              <text x="340" y="186" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">I</text>
+              <text x="340" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="#4A332A">R</text>
+              <text x="540" y="50" font-size="12" fill="#4A433E">Narrowing — boundaries</text>
+              <text x="540" y="98" font-size="12" fill="#4A433E">End Goal — success looks like</text>
+              <text x="540" y="142" font-size="12" fill="#4A433E">Steps — the sequence</text>
+              <text x="540" y="186" font-size="12" fill="#4A433E">Instructions — what to produce</text>
+              <text x="540" y="220" font-size="12" fill="#4A433E">Role — who it should be</text>
+            </svg>
+            <p class="prose" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:18px">Each layer builds on the one below it — skipping a layer is why most prompts feel inconsistent.</p>
+
+            <div class="step">
+              <div class="shead"><div class="snum">R</div>
+                <div class="stxt"><b>Role — who the AI should be</b><span>Sets vocabulary, depth, and tone before it writes a word. Prevents generic, surface-level answers.</span></div></div>
+              <div class="examples"><div class="ex"><b>Example:</b> "You are a senior product marketing manager with 12 years launching B2B SaaS products."</div></div>
+            </div>
+
+            <div class="step">
+              <div class="shead"><div class="snum">I</div>
+                <div class="stxt"><b>Instructions — what you want produced</b><span>The clear directive. Most people only write this part and skip the rest — exactly why their results are inconsistent.</span></div></div>
+              <div class="examples"><div class="ex"><b>Example:</b> "Create a go-to-market strategy for our new project management tool."</div></div>
+            </div>
+
+            <div class="step">
+              <div class="shead"><div class="snum">S</div>
+                <div class="stxt"><b>Steps — how it should work through the task</b><span>Breaking the task into a sequence prevents the model from skipping important phases or jumping to a shallow answer.</span></div></div>
+              <div class="examples"><div class="ex"><b>Example:</b> "1. Identify our top 3 differentiators. 2. Define 3 buyer personas. 3. Outline a 90-day launch timeline."</div></div>
+            </div>
+
+            <div class="step">
+              <div class="shead"><div class="snum">E</div>
+                <div class="stxt"><b>End Goal — what success actually looks like</b><span>Not just "write X" but the outcome X is supposed to achieve. Without this, you can't tell if a draft succeeded or just looks finished.</span></div></div>
+              <div class="examples"><div class="ex"><b>Weak:</b> "Write a business plan."</div><div class="ex"><b>Strong:</b> "...to secure investment and align the business with our sustainability goals."</div></div>
+            </div>
+
+            <div class="step">
+              <div class="shead"><div class="snum">N</div>
+                <div class="stxt"><b>Narrowing — explicit boundaries</b><span>The piece almost nobody uses. Defines what to exclude, avoid, or stay within — the difference between a generic answer and a precisely-scoped one.</span></div></div>
+              <div class="examples"><div class="ex"><b>Example:</b> "Focus only on the North American market. Avoid jargon. Keep it under 600 words."</div></div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px">
+            <h3 class="subhead" style="margin-top:0">Layer two: sharpen it further</h3>
+            <p class="prose" style="margin-bottom:10px">Once RISEN is second nature, these techniques — pulled directly from Anthropic's own published prompt engineering documentation — push results further on harder tasks.</p>
+            <div class="step">
+              <div class="shead"><div class="snum" style="font-size:11px">CoT</div>
+                <div class="stxt"><b>Let it think (chain of thought)</b><span>For math, logic, or multi-step analysis, explicitly ask it to reason step by step before the final answer.</span></div></div>
+              <div class="codey"><pre class="mono"><span class="tk">Think step by step inside &lt;thinking&gt; tags,
+then give your final answer inside &lt;answer&gt; tags.</span></pre></div>
+            </div>
+            <div class="step">
+              <div class="shead"><div class="snum" style="font-size:11px">XML</div>
+                <div class="stxt"><b>Tag the parts of your prompt</b><span>Wrapping instructions, data, and examples in labeled tags stops the model from mixing them up — the most underused beginner technique.</span></div></div>
+              <div class="codey"><pre class="mono">&lt;instructions&gt;Summarize this in 3 bullets&lt;/instructions&gt;
+&lt;data&gt;<span class="tk">[ paste data here ]</span>&lt;/data&gt;</pre></div>
+            </div>
+          </div>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="chatbots">&#8592; Back</button><button class="nf-btn" data-goto="mistakes">Next: What goes wrong &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="mistakes">
+          <div class="sec-head"><div class="sh-ic">&#128683;</div><div><h2>What goes wrong — common failure patterns</h2><div class="sub">The mistakes that quietly make every output worse</div></div></div>
+          <div class="panel">
+            <div class="mistake-row">
+              <div class="mic">1</div>
+              <div class="mtxt"><b>Asking too broadly</b>
+              <span class="bad">&#10007; "Write me a marketing plan."</span>
+              <span class="good">&#10003; "Write a 1-week social posting plan for a haircare brand targeting women 20–35 in KL, 3 posts/week."</span>
+              <span class="note">A broad request forces the model to guess every constraint you actually care about.</span></div>
+            </div>
+            <div class="mistake-row">
+              <div class="mic">2</div>
+              <div class="mtxt"><b>Accepting the first draft as final</b>
+              <span class="note">The first response is a starting point, not the answer. Pushing back or asking for one specific change almost always produces a meaningfully better second draft.</span></div>
+            </div>
+            <div class="mistake-row">
+              <div class="mic">3</div>
+              <div class="mtxt"><b>Trusting facts and numbers without checking</b>
+              <span class="note">Models can state incorrect figures or invent sources in a confident tone indistinguishable from a correct answer. Anything published or sent to a client needs independent verification.</span></div>
+            </div>
+            <div class="mistake-row">
+              <div class="mic">4</div>
+              <div class="mtxt"><b>Using one tool for every job</b>
+              <span class="note">Defaulting to whichever tool you opened first, regardless of task, leaves real quality on the table — exactly why the directory exists.</span></div>
+            </div>
+            <div class="mistake-row">
+              <div class="mic">5</div>
+              <div class="mtxt"><b>Forgetting to specify format</b>
+              <span class="note">Without instructions, models often default to long, hedge-everything answers. If you want short or structured output, say so explicitly.</span></div>
+            </div>
+          </div>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="framework">&#8592; Back</button><button class="nf-btn" data-goto="examples">Next: Worked examples &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="examples">
+          <div class="sec-head"><div class="sh-ic">&#128269;</div><div><h2>Worked examples — the frameworks, applied</h2><div class="sub">Four real, everyday tasks using RISEN + Anthropic's techniques</div></div></div>
+          <div class="panel">
+
+            <div class="ex-block">
+              <div class="ex-title">Following up with a quiet client <span class="et-tag">Email</span></div>
+              <div class="ex-context">Task: you sent a proposal a week ago and haven't heard back. You want to check in without sounding pushy.</div>
+              <div class="code-pane">
+                <div class="ctop"><i style="background:#FF6058"></i><i style="background:#FFBE2F"></i><i style="background:#2BC840"></i><span class="fn mono">follow-up-email.md</span></div>
+                <pre class="mono">&lt;role&gt;You are a calm, professional account manager.&lt;/role&gt;
+
+&lt;instructions&gt;
+Write a short follow-up email checking in on a
+proposal sent <span class="tk">7 days</span> ago, leaving an easy way for
+them to say "not now" without feeling bad.
+&lt;/instructions&gt;
+
+&lt;end_goal&gt;
+A reply, either way — not silence.
+&lt;/end_goal&gt;
+
+&lt;narrowing&gt;
+Under 80 words. Warm but brief. No corporate
+phrases like "following up on my previous email."
+Sign off as <span class="var">[YOUR NAME]</span>.
+&lt;/narrowing&gt;</pre>
+              </div>
+            </div>
+
+            <div class="ex-block">
+              <div class="ex-title">Turning a long meeting into action items <span class="et-tag">Summary</span></div>
+              <div class="ex-context">Task: a messy 40-minute meeting transcript needs to become a clean summary for people who weren't there.</div>
+              <div class="code-pane">
+                <div class="ctop"><i style="background:#FF6058"></i><i style="background:#FFBE2F"></i><i style="background:#2BC840"></i><span class="fn mono">meeting-summary.md</span></div>
+                <pre class="mono">&lt;instructions&gt;
+Summarize what was decided and who owns each next
+step. Ignore off-topic chat.
+&lt;/instructions&gt;
+
+&lt;steps&gt;
+1. Extract decisions. 2. Extract action items with
+owner + deadline. 3. List open questions.
+&lt;/steps&gt;
+
+&lt;narrowing&gt;
+Three sections only. Keep each line under 15 words.
+&lt;/narrowing&gt;
+
+&lt;transcript&gt;<span class="tk">[ paste transcript here ]</span>&lt;/transcript&gt;</pre>
+              </div>
+            </div>
+
+            <div class="ex-block">
+              <div class="ex-title">Writing a social caption that doesn't sound like AI <span class="et-tag">Content</span></div>
+              <div class="ex-context">Task: a product photo needs a caption that sounds like a real person, not a marketing template.</div>
+              <div class="code-pane">
+                <div class="ctop"><i style="background:#FF6058"></i><i style="background:#FFBE2F"></i><i style="background:#2BC840"></i><span class="fn mono">ig-caption.md</span></div>
+                <pre class="mono">&lt;role&gt;You are a social media manager who writes
+captions that sound like a real person, not a
+brand.&lt;/role&gt;
+
+&lt;instructions&gt;
+Write 3 caption options for this product photo —
+each a different angle, not 3 variations of one idea.
+Product: <span class="tk">[PRODUCT NAME]</span>, audience: Malaysian women
+20–35, casual tone.
+&lt;/instructions&gt;
+
+&lt;narrowing&gt;
+Under 150 characters each. No hashtags. One emoji
+max per caption, only if it adds something.
+&lt;/narrowing&gt;</pre>
+              </div>
+            </div>
+
+            <div class="ex-block">
+              <div class="ex-title">Thinking through a real decision <span class="et-tag">Decision-making</span></div>
+              <div class="ex-context">Task: deciding between two options, using chain-of-thought so the reasoning is visible, not just an opinion.</div>
+              <div class="code-pane">
+                <div class="ctop"><i style="background:#FF6058"></i><i style="background:#FFBE2F"></i><i style="background:#2BC840"></i><span class="fn mono">decision-helper.md</span></div>
+                <pre class="mono">&lt;role&gt;You are a sharp, neutral thinking partner —
+not someone trying to tell me what to do.&lt;/role&gt;
+
+&lt;instructions&gt;
+I'm deciding between <span class="tk">[OPTION A]</span> and <span class="tk">[OPTION B]</span>.
+Here's what matters to me: <span class="tk">[YOUR PRIORITIES]</span>.
+Think step by step inside &lt;thinking&gt; tags about
+the real tradeoffs, connected to my priorities.
+&lt;/instructions&gt;
+
+&lt;end_goal&gt;
+One question I should answer myself before
+deciding — not your recommendation.
+&lt;/end_goal&gt;</pre>
+              </div>
+            </div>
+
+          </div>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="mistakes">&#8592; Back</button><button class="nf-btn" data-goto="action">Next: Your first step &#8594;</button></div>
+        </section>
+
+        <section class="panel-view" data-view="action">
+          <div class="sec-head"><div class="sh-ic">&#128640;</div><div><h2>Your first step — do this today</h2><div class="sub">Reading this won't change anything. One small action will.</div></div></div>
+          <div class="action-card">
+            <h3>Right now, before you close this:</h3>
+            <ol>
+              <li>Pick <b>one</b> real task you have today — an email, a caption, a summary, a decision you're stuck on.</li>
+              <li>Open Claude or ChatGPT and write a prompt using Role, Instructions, Steps, End Goal, Narrowing.</li>
+              <li>Read the output, then ask for <b>one</b> specific correction instead of starting over from scratch.</li>
+              <li>Notice how much better that result was than your usual one-line prompt — that gap is the whole point of this guide.</li>
+            </ol>
+          </div>
+
+          <section class="closing">
+            <h2>Want a daily push to keep building this skill?</h2>
+            <p>Real AI workflows for work, trading, and content — no fake stats, no locked vaults, just what actually works.</p>
+            <div class="cbtns">
+              <a class="pill" href="https://claudechallenge.com/claudemy-?am_id=wilson2456" target="_blank" rel="noopener" style="text-decoration:none">Learn Daily AI Tips</a>
+            </div>
+          </section>
+          <div class="nav-footer-btns"><button class="nf-btn" data-goto="examples">&#8592; Back</button><button class="nf-btn" data-goto="overview">&#8634; Back to overview</button></div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="float-cta" id="floatCta">
+    <div class="float-panel" id="floatPanel">
+      <div class="fp-head">
+        <div class="fp-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.07L2 22l5.07-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#fff" opacity=".25"/><path d="M17.47 14.38c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.62.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.13-.42-2.15-1.33-.79-.71-1.33-1.58-1.48-1.85-.16-.27-.02-.41.13-.55.14-.13.32-.34.48-.5.16-.18.21-.3.32-.5.11-.2.05-.38-.02-.52-.07-.14-.63-1.52-.86-2.08-.23-.55-.46-.48-.63-.49-.16-.01-.35-.01-.54-.01-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.3 0 1.36.99 2.67 1.13 2.86.14.18 1.9 2.9 4.6 3.95 2.7 1.05 2.7.7 3.19.66.48-.05 1.6-.65 1.83-1.28.23-.63.23-1.17.16-1.28-.07-.11-.27-.18-.55-.32z" fill="#fff"/></svg></div>
+        <div class="fp-title">Learn Daily AI Tips</div>
+      </div>
+      <div class="fp-sub">Get one practical AI tip a day — straight to the point, no fluff.</div>
+      <a class="fp-btn" href="https://claudechallenge.com/claudemy-?am_id=wilson2456" target="_blank" rel="noopener">Join the daily challenge &#8594;</a>
+    </div>
+    <button class="float-toggle" id="floatToggle" aria-label="Open daily AI tips">
+      <div class="pulse"></div>
+      <svg viewBox="0 0 24 24" fill="none" style="position:relative;z-index:1"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.07L2 22l5.07-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#fff"/><path d="M17.47 14.38c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.62.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.13-.42-2.15-1.33-.79-.71-1.33-1.58-1.48-1.85-.16-.27-.02-.41.13-.55.14-.13.32-.34.48-.5.16-.18.21-.3.32-.5.11-.2.05-.38-.02-.52-.07-.14-.63-1.52-.86-2.08-.23-.55-.46-.48-.63-.49-.16-.01-.35-.01-.54-.01-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.3 0 1.36.99 2.67 1.13 2.86.14.18 1.9 2.9 4.6 3.95 2.7 1.05 2.7.7 3.19.66.48-.05 1.6-.65 1.83-1.28.23-.63.23-1.17.16-1.28-.07-.11-.27-.18-.55-.32z" fill="#25D366"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+var toolData = [
+  {cat:"Writing & general chat", tag:"8 tools", tools:[
+    {n:"Claude",d:"Long documents, careful reasoning",b:"#CC785C",l:"https://claude.ai",p:"freemium"},
+    {n:"ChatGPT",d:"Fast all-rounder, huge plugin set",b:"#10A37F",l:"https://chatgpt.com",p:"freemium"},
+    {n:"Gemini",d:"Built into Gmail & Docs",b:"#4285F4",l:"https://gemini.google.com",p:"freemium"},
+    {n:"Grok",d:"Real-time info, built into X",b:"#000",l:"https://x.ai",p:"paid"},
+    {n:"Perplexity",d:"Chat with live web citations",b:"#7C3AED",l:"https://perplexity.ai",p:"freemium"},
+    {n:"Poe",d:"One app, many models at once",b:"#5436DA",l:"https://poe.com",p:"freemium"},
+    {n:"Mistral Le Chat",d:"Fast, open-weight European model",b:"#FF6B35",l:"https://chat.mistral.ai",p:"free"},
+    {n:"DeepSeek",d:"Strong reasoning, low cost",b:"#E03C31",l:"https://chat.deepseek.com",p:"free"}
+  ]},
+  {cat:"Image generation", tag:"8 tools", tools:[
+    {n:"Midjourney",d:"Best painterly, stylized images",b:"#000",l:"https://midjourney.com",p:"paid"},
+    {n:"Adobe Firefly",d:"Integrates with Photoshop",b:"#FF4D4D",l:"https://firefly.adobe.com",p:"freemium"},
+    {n:"DALL-E",d:"Built into ChatGPT",b:"#412991",l:"https://openai.com/dall-e-3",p:"paid"},
+    {n:"Imagen",d:"Google's model, inside Gemini",b:"#1A73E8",l:"https://deepmind.google/technologies/imagen",p:"freemium"},
+    {n:"Stable Diffusion",d:"Open-source, fully customizable",b:"#000",l:"https://stability.ai",p:"free"},
+    {n:"Leonardo AI",d:"Game art & consistent characters",b:"#6E56CF",l:"https://leonardo.ai",p:"freemium"},
+    {n:"Ideogram",d:"Best at rendering text in images",b:"#FF6F61",l:"https://ideogram.ai",p:"freemium"},
+    {n:"Canva AI",d:"Image gen inside your designs",b:"#00C2A8",l:"https://canva.com",p:"freemium"}
+  ]},
+  {cat:"Video generation & editing", tag:"9 tools", tools:[
+    {n:"Runway",d:"Text/image-to-video generation",b:"#000",l:"https://runwayml.com",p:"freemium"},
+    {n:"CapCut",d:"Short-form editing & captions",b:"#FF0050",l:"https://capcut.com",p:"freemium"},
+    {n:"Kling AI",d:"Realistic AI video generation",b:"#1A1A2E",l:"https://klingai.com",p:"freemium"},
+    {n:"Pika",d:"Fast stylized video clips",b:"#5B7FA6",l:"https://pika.art",p:"freemium"},
+    {n:"Luma Dream Machine",d:"Smooth, cinematic motion",b:"#0F0F0F",l:"https://lumalabs.ai/dream-machine",p:"freemium"},
+    {n:"HeyGen",d:"AI avatar & talking-head video",b:"#FF3D00",l:"https://heygen.com",p:"freemium"},
+    {n:"D-ID",d:"Photo-to-talking-avatar video",b:"#3A3A3A",l:"https://d-id.com",p:"freemium"},
+    {n:"Descript",d:"Edit video by editing the transcript",b:"#00B8D9",l:"https://descript.com",p:"freemium"},
+    {n:"OpusClip",d:"Long video to short clips automatically",b:"#E50914",l:"https://opus.pro",p:"freemium"}
+  ]},
+  {cat:"Voice & audio", tag:"7 tools", tools:[
+    {n:"ElevenLabs",d:"Realistic voiceover & voice cloning",b:"#000",l:"https://elevenlabs.io",p:"freemium"},
+    {n:"Murf AI",d:"Studio-quality narration",b:"#FF6B6B",l:"https://murf.ai",p:"freemium"},
+    {n:"Suno",d:"Full songs from a text prompt",b:"#6C5CE7",l:"https://suno.com",p:"freemium"},
+    {n:"Udio",d:"AI music generation, high fidelity",b:"#00D9C0",l:"https://udio.com",p:"freemium"},
+    {n:"Adobe Podcast",d:"Cleans up rough audio recordings",b:"#2D3436",l:"https://podcast.adobe.com",p:"free"},
+    {n:"Play.ht",d:"Text-to-speech for apps & sites",b:"#7158E2",l:"https://play.ht",p:"freemium"},
+    {n:"Whisper",d:"Free, accurate speech-to-text",b:"#FD7E14",l:"https://openai.com/research/whisper",p:"free"}
+  ]},
+  {cat:"Coding & development", tag:"10 tools", tools:[
+    {n:"Claude Code",d:"Agent that edits real projects",b:"#CC785C",l:"https://claude.com/claude-code",p:"paid"},
+    {n:"GitHub Copilot",d:"In-editor autocomplete suggestions",b:"#000",l:"https://github.com/features/copilot",p:"freemium"},
+    {n:"Cursor",d:"AI-native code editor",b:"#1E1E1E",l:"https://cursor.com",p:"freemium"},
+    {n:"v0 by Vercel",d:"UI generation from a text prompt",b:"#000",l:"https://v0.dev",p:"freemium"},
+    {n:"Replit AI",d:"Build & deploy apps in-browser",b:"#FF7A00",l:"https://replit.com",p:"freemium"},
+    {n:"Windsurf",d:"Agentic coding IDE",b:"#181818",l:"https://windsurf.com",p:"freemium"},
+    {n:"Codeium",d:"Free AI code completion",b:"#4C6EF5",l:"https://codeium.com",p:"free"},
+    {n:"Tabnine",d:"Privacy-focused code suggestions",b:"#00B894",l:"https://tabnine.com",p:"freemium"},
+    {n:"Amazon Q Developer",d:"AWS-integrated coding assistant",b:"#0984E3",l:"https://aws.amazon.com/q/developer",p:"freemium"},
+    {n:"Bolt.new",d:"Full app from a single prompt",b:"#6C5CE7",l:"https://bolt.new",p:"freemium"}
+  ]},
+  {cat:"Productivity & notes", tag:"8 tools", tools:[
+    {n:"Notion AI",d:"Drafts & organizes inside your docs",b:"#000",l:"https://notion.so",p:"paid"},
+    {n:"Mem",d:"Self-organizing notes",b:"#7B68EE",l:"https://mem.ai",p:"freemium"},
+    {n:"Reflect",d:"AI-assisted journaling & notes",b:"#FF6584",l:"https://reflect.app",p:"paid"},
+    {n:"Microsoft Copilot",d:"Built into Word, Excel, Outlook",b:"#2F80ED",l:"https://copilot.microsoft.com",p:"freemium"},
+    {n:"Taskade",d:"AI task & project management",b:"#00897B",l:"https://taskade.com",p:"freemium"},
+    {n:"Mintlify",d:"Auto-generated documentation",b:"#E84393",l:"https://mintlify.com",p:"freemium"},
+    {n:"Coda AI",d:"Docs that act like apps",b:"#6F4E37",l:"https://coda.io",p:"freemium"},
+    {n:"Akiflow",d:"AI-prioritized daily planning",b:"#FAB005",l:"https://akiflow.com",p:"paid"}
+  ]},
+  {cat:"Automation & workflows", tag:"6 tools", tools:[
+    {n:"Zapier",d:"Connects apps, biggest library",b:"#FF4A00",l:"https://zapier.com",p:"freemium"},
+    {n:"Make",d:"Visual, more flexible automations",b:"#6D5DFC",l:"https://make.com",p:"freemium"},
+    {n:"n8n",d:"Open-source, self-hostable flows",b:"#000",l:"https://n8n.io",p:"freemium"},
+    {n:"IFTTT",d:"Simple personal automations",b:"#FF6B6B",l:"https://ifttt.com",p:"freemium"},
+    {n:"ManyChat",d:"DM & comment automation for IG",b:"#1D9BF0",l:"https://manychat.com",p:"freemium"},
+    {n:"Apify",d:"Web scraping & data extraction",b:"#0ABF53",l:"https://apify.com",p:"freemium"}
+  ]},
+  {cat:"Research & search", tag:"6 tools", tools:[
+    {n:"Perplexity",d:"Cited, sourced answers",b:"#7C3AED",l:"https://perplexity.ai",p:"freemium"},
+    {n:"Elicit",d:"Searches & summarizes academic papers",b:"#D14836",l:"https://elicit.com",p:"freemium"},
+    {n:"Consensus",d:"Finds scientific consensus on a question",b:"#00897B",l:"https://consensus.app",p:"freemium"},
+    {n:"SciSpace",d:"Explains dense research papers",b:"#0066CC",l:"https://scispace.com",p:"freemium"},
+    {n:"Google AI Mode",d:"AI-generated search overviews",b:"#FF8C00",l:"https://google.com",p:"free"},
+    {n:"Phind",d:"Search built for technical questions",b:"#3F51B5",l:"https://phind.com",p:"freemium"}
+  ]},
+  {cat:"Presentations & design", tag:"6 tools", tools:[
+    {n:"Gamma",d:"Full decks from a text outline",b:"#7B2FF7",l:"https://gamma.app",p:"freemium"},
+    {n:"Canva AI",d:"Design assistant inside Canva",b:"#00C2A8",l:"https://canva.com",p:"freemium"},
+    {n:"Beautiful.ai",d:"Auto-formats slides as you type",b:"#0066FF",l:"https://beautiful.ai",p:"paid"},
+    {n:"Tome",d:"AI-native storytelling decks",b:"#2D3436",l:"https://tome.app",p:"freemium"},
+    {n:"Adobe Express",d:"Quick AI-assisted graphics",b:"#FF4D4D",l:"https://adobe.com/express",p:"freemium"},
+    {n:"Plus AI",d:"AI slides inside Google Slides",b:"#A66CFF",l:"https://plusdocs.com",p:"freemium"}
+  ]},
+  {cat:"Data & spreadsheets", tag:"6 tools", tools:[
+    {n:"Excel Copilot",d:"Formulas & analysis in plain English",b:"#217346",l:"https://microsoft.com/microsoft-365/copilot",p:"paid"},
+    {n:"Sheets + Gemini",d:"AI formulas inside Google Sheets",b:"#0F9D58",l:"https://workspace.google.com",p:"freemium"},
+    {n:"Rows",d:"AI-native spreadsheet from scratch",b:"#5046E5",l:"https://rows.com",p:"freemium"},
+    {n:"Julius AI",d:"Chat with your dataset directly",b:"#FF6B35",l:"https://julius.ai",p:"freemium"},
+    {n:"DataSnipper",d:"AI-assisted audit & vouching in Excel",b:"#1ABC9C",l:"https://datasnipper.com",p:"paid"},
+    {n:"Power BI Copilot",d:"Natural-language dashboard queries",b:"#4A90D9",l:"https://powerbi.microsoft.com",p:"paid"}
+  ]},
+  {cat:"Meetings & transcription", tag:"6 tools", tools:[
+    {n:"Otter.ai",d:"Live transcription & summaries",b:"#1167B1",l:"https://otter.ai",p:"freemium"},
+    {n:"Fireflies.ai",d:"Records & searches meeting history",b:"#5B5BD6",l:"https://fireflies.ai",p:"freemium"},
+    {n:"Granola",d:"Quiet notes app for live meetings",b:"#0084FF",l:"https://granola.ai",p:"freemium"},
+    {n:"tl;dv",d:"Records & clips video calls",b:"#FF3860",l:"https://tldv.io",p:"freemium"},
+    {n:"Read AI",d:"Meeting summaries & engagement scoring",b:"#0F0F0F",l:"https://read.ai",p:"freemium"},
+    {n:"Descript",d:"Transcribe & edit recordings as text",b:"#00B8D9",l:"https://descript.com",p:"freemium"}
+  ]},
+  {cat:"Customer support & sales", tag:"6 tools", tools:[
+    {n:"Intercom Fin",d:"AI customer support agent",b:"#1F8FFF",l:"https://intercom.com/fin",p:"paid"},
+    {n:"HubSpot AI",d:"CRM drafting & lead summaries",b:"#FF7A59",l:"https://hubspot.com",p:"freemium"},
+    {n:"Salesforce Einstein",d:"AI inside enterprise CRM",b:"#00A1E0",l:"https://salesforce.com/einstein",p:"paid"},
+    {n:"Drift",d:"AI chat for website lead capture",b:"#6C5CE7",l:"https://drift.com",p:"paid"},
+    {n:"Gong",d:"AI sales call analysis",b:"#FF6B6B",l:"https://gong.io",p:"paid"},
+    {n:"Crisp",d:"Small-business AI live chat",b:"#2D3436",l:"https://crisp.chat",p:"freemium"}
+  ]},
+  {cat:"Marketing & social media", tag:"8 tools", tools:[
+    {n:"Jasper",d:"On-brand marketing copy at scale",b:"#9B51E0",l:"https://jasper.ai",p:"paid"},
+    {n:"Copy.ai",d:"Ad & email copy generator",b:"#00C2A8",l:"https://copy.ai",p:"freemium"},
+    {n:"AdCreative.ai",d:"Generates ad creative variations",b:"#1877F2",l:"https://adcreative.ai",p:"paid"},
+    {n:"OpusClip",d:"Repurposes long video into clips",b:"#FF0050",l:"https://opus.pro",p:"freemium"},
+    {n:"Later",d:"AI-assisted social scheduling",b:"#5851DB",l:"https://later.com",p:"freemium"},
+    {n:"Buffer AI Assistant",d:"Caption ideas & scheduling",b:"#1DA1F2",l:"https://buffer.com",p:"freemium"},
+    {n:"Flick",d:"Hashtag & caption research",b:"#E1306C",l:"https://flick.social",p:"freemium"},
+    {n:"Brandwatch",d:"AI social listening & trends",b:"#0ABF53",l:"https://brandwatch.com",p:"paid"}
+  ]},
+  {cat:"Resume & career", tag:"5 tools", tools:[
+    {n:"Teal",d:"Resume builder & job tracker",b:"#0A66C2",l:"https://tealhq.com",p:"freemium"},
+    {n:"Kickresume",d:"AI resume & cover letter writer",b:"#6C5CE7",l:"https://kickresume.com",p:"freemium"},
+    {n:"Final Round AI",d:"Mock interview practice",b:"#FF6B6B",l:"https://finalroundai.com",p:"paid"},
+    {n:"Rezi",d:"ATS-optimized resume scoring",b:"#00897B",l:"https://rezi.ai",p:"freemium"},
+    {n:"LinkedIn AI",d:"Profile & post writing assistant",b:"#0A66C2",l:"https://linkedin.com",p:"freemium"}
+  ]},
+  {cat:"Education & learning", tag:"6 tools", tools:[
+    {n:"NotebookLM",d:"Turns your notes into a study guide",b:"#7B2FF7",l:"https://notebooklm.google",p:"free"},
+    {n:"Khanmigo",d:"AI tutor from Khan Academy",b:"#00C9A7",l:"https://khanacademy.org/khan-labs",p:"freemium"},
+    {n:"Quizlet AI",d:"Auto-generates study sets",b:"#FF6B35",l:"https://quizlet.com",p:"freemium"},
+    {n:"Duolingo Max",d:"AI-powered language practice",b:"#4A90D9",l:"https://duolingo.com",p:"paid"},
+    {n:"Socratic",d:"Homework help by Google",b:"#1E1E1E",l:"https://socratic.org",p:"free"},
+    {n:"Coursera Coach",d:"AI guide through online courses",b:"#6F4E37",l:"https://coursera.org",p:"freemium"}
+  ]},
+  {cat:"No-code app builders", tag:"6 tools", tools:[
+    {n:"Bubble",d:"Full web apps, no code",b:"#000",l:"https://bubble.io",p:"freemium"},
+    {n:"Bolt.new",d:"Prompt-to-working-app",b:"#6C5CE7",l:"https://bolt.new",p:"freemium"},
+    {n:"Replit",d:"Build, run, and host in-browser",b:"#FF7A00",l:"https://replit.com",p:"freemium"},
+    {n:"Glide",d:"Apps from a spreadsheet",b:"#2EA3F2",l:"https://glideapps.com",p:"freemium"},
+    {n:"v0 by Vercel",d:"UI components from a prompt",b:"#000",l:"https://v0.dev",p:"freemium"},
+    {n:"Softr",d:"Client portals & directories fast",b:"#4A90D9",l:"https://softr.io",p:"freemium"}
+  ]}
+];
+
+function renderTools(){
+  var wrap = document.getElementById('toolCats');
+  var html = '';
+  for(var ci=0; ci<toolData.length; ci++){
+    var c = toolData[ci];
+    var cards = '';
+    for(var ti=0; ti<c.tools.length; ti++){
+      var t = c.tools[ti];
+      var ptagClass = (t.p === 'paid') ? 'paid' : 'free';
+      var ptagLabel = (t.p === 'paid') ? 'Paid' : (t.p === 'free') ? 'Free' : 'Freemium';
+      cards += '<a class="tool-card" href="'+t.l+'" target="_blank" rel="noopener">' +
+        '<div class="badge" style="background:'+t.b+'">'+t.n.charAt(0)+'</div>' +
+        '<div class="tinfo"><div class="tname-row"><span class="tname">'+t.n+'</span>' +
+        '<span class="ptag '+ptagClass+'">'+ptagLabel+'</span></div>' +
+        '<span class="tdesc">'+t.d+'</span></div></a>';
+    }
+    html += '<div class="tool-cat" data-idx="'+ci+'">' +
+      '<div class="tool-cat-head" onclick="toggleCat('+ci+')">' +
+      '<h3>'+c.cat+'</h3><span class="tc-tag">'+c.tag+'</span>' +
+      '<span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>' +
+      '<div class="tool-cat-body"><div class="tool-grid">'+cards+'</div></div></div>';
+  }
+  wrap.innerHTML = html;
+}
+
+function toggleCat(idx){
+  var cats = document.querySelectorAll('.tool-cat');
+  for(var i=0;i<cats.length;i++){
+    if(i===idx){ cats[i].classList.toggle('open'); }
+    else { cats[i].classList.remove('open'); }
+  }
+}
+
+var panelLabels = {
+  overview:"Overview", why:"Why AI matters now", myths:"Common myths",
+  tools:"110+ tool directory", chatbots:"2026 chatbot workflow",
+  framework:"RISEN prompt framework", mistakes:"What goes wrong",
+  examples:"Worked examples", action:"Your first step"
+};
+var order = ["overview","why","myths","tools","chatbots","framework","mistakes","examples","action"];
+var visited = {overview:true};
+
+function goto(panel){
+  var panels = document.querySelectorAll('.panel-view');
+  for(var i=0;i<panels.length;i++){ panels[i].classList.toggle('active', panels[i].getAttribute('data-view')===panel); }
+  var navs = document.querySelectorAll('.nav-item');
+  for(var j=0;j<navs.length;j++){ navs[j].classList.toggle('active', navs[j].getAttribute('data-panel')===panel); }
+  document.getElementById('crumb').textContent = panelLabels[panel] || panel;
+  visited[panel] = true;
+  updateProgress();
+  document.querySelector('.content').scrollTop = 0;
+  closeSidebarMobile();
+}
+
+function updateProgress(){
+  var trackable = [];
+  for(var i=0;i<order.length;i++){ if(order[i] !== 'overview') trackable.push(order[i]); }
+  var done = 0;
+  for(var j=0;j<trackable.length;j++){ if(visited[trackable[j]]) done++; }
+  document.getElementById('progVal').textContent = done + ' / ' + trackable.length;
+  document.getElementById('progFill').style.width = (done/trackable.length*100) + '%';
+  var navs = document.querySelectorAll('.nav-item');
+  for(var k=0;k<navs.length;k++){
+    var p = navs[k].getAttribute('data-panel');
+    navs[k].classList.toggle('read', !!visited[p]);
+  }
+}
+
+function closeSidebarMobile(){
+  if(window.innerWidth <= 880){
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.getElementById('app').classList.remove('nav-open');
+  }
+}
+
+document.addEventListener('click', function(e){
+  var navItem = e.target.closest('.nav-item');
+  if(navItem){ goto(navItem.getAttribute('data-panel')); return; }
+  var qn = e.target.closest('[data-goto]');
+  if(qn){ goto(qn.getAttribute('data-goto')); return; }
+});
+
+document.getElementById('menuBtn').addEventListener('click', function(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  document.getElementById('app').classList.toggle('nav-open');
+});
+document.getElementById('scrim').addEventListener('click', closeSidebarMobile);
+
+document.getElementById('floatToggle').addEventListener('click', function(){
+  document.getElementById('floatPanel').classList.toggle('open');
+});
+document.addEventListener('click', function(e){
+  var cta = document.getElementById('floatCta');
+  if(!cta.contains(e.target)){
+    document.getElementById('floatPanel').classList.remove('open');
+  }
+});
+
+if(window.innerWidth > 880){
+  document.getElementById('sidebar').classList.remove('collapsed');
+}
+
+renderTools();
+updateProgress();
+</script>
+</body>
+</html>
